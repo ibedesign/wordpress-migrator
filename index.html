@@ -76,8 +76,6 @@
             font-size: 16px;
             margin: 0;
         }
-            margin-bottom: 16px;
-        }
 
         .paste-area {
             background: #34495e;
@@ -419,6 +417,13 @@
                 <button onclick="copyClient()" style="padding: 6px 12px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; white-space: nowrap; font-size: 12px;">コピー</button>
             </div>
         </div>
+        <div class="slug-area" style="padding: 8px 16px;">
+            <label style="font-size: 12px; margin-bottom: 4px; display: block;">ディレクトリ名</label>
+            <div style="display: flex; gap: 8px; align-items: stretch;">
+                <input type="text" id="slugDisplay" readonly placeholder="ディレクトリ名..." style="flex: 1; height: 32px; font-size: 13px; padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px;">
+                <button onclick="copySlug()" style="padding: 6px 12px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; white-space: nowrap; font-size: 12px;">コピー</button>
+            </div>
+        </div>
         <div style="padding: 8px 16px; display: flex; justify-content: flex-end;">
             <button onclick="copyHTML()" id="copyHTMLBtn" style="padding: 6px 12px; background: #27ae60; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; white-space: nowrap; font-size: 12px;">HTMLをコピー</button>
         </div>
@@ -462,6 +467,7 @@
         const htmlOutput = document.getElementById('htmlOutput');
         const titleDisplay = document.getElementById('titleDisplay');
         const clientDisplay = document.getElementById('clientDisplay');
+        const slugDisplay = document.getElementById('slugDisplay');
         const markdownEditor = document.getElementById('markdownEditor');
         const imagesGrid = document.getElementById('imagesGrid');
         
@@ -537,6 +543,21 @@
             let markdown = '';
             let title = '';
             articleImages = [];
+
+            // URLからディレクトリ名（スラッグ）を抽出
+            try {
+                const url = new URL(baseUrl);
+                const pathname = url.pathname;
+                // 末尾のスラッシュを削除して、最後のディレクトリ名を取得
+                const parts = pathname.replace(/\/$/, '').split('/');
+                const slug = parts[parts.length - 1];
+                if (slug) {
+                    slugDisplay.value = slug;
+                    console.log('Extracted slug:', slug);
+                }
+            } catch (e) {
+                console.warn('Failed to extract slug from URL:', e);
+            }
 
             // H1タイトルを抽出
             const h1 = doc.querySelector('h1') || articleContent.querySelector('h1');
@@ -783,14 +804,22 @@
             }
 
             function processImage(img) {
-                if (stopProcessing) return; // 既に停止フラグが立っていたらスキップ
+                console.log('processImage called for img:', img);
+                if (stopProcessing) {
+                    console.log('  -> stopProcessing is true, skipping');
+                    return;
+                }
                 
                 let imgSrc = img.src || img.dataset.src || img.getAttribute('data-lazy-src');
-                if (!imgSrc) return;
+                console.log('  -> imgSrc:', imgSrc);
+                if (!imgSrc) {
+                    console.log('  -> No src found, skipping');
+                    return;
+                }
                 
                 // contact系の画像が見つかったら処理を停止
                 if (imgSrc.includes('contact-mail') || imgSrc.includes('contact-call')) {
-                    console.log('Found contact image, stopping further processing:', imgSrc);
+                    console.log('  -> Found contact image, stopping further processing:', imgSrc);
                     stopProcessing = true;
                     return;
                 }
@@ -808,10 +837,13 @@
                 // 小さいアイコンやロゴはスキップ（width/heightが小さいもの）
                 const width = parseInt(img.width) || 0;
                 const height = parseInt(img.height) || 0;
+                console.log('  -> Image size:', width, 'x', height);
                 if ((width > 0 && width < 50) || (height > 0 && height < 50)) {
+                    console.log('  -> Image too small, skipping');
                     return;
                 }
                 
+                console.log('  -> Adding image to articleImages');
                 articleImages.push({
                     src: imgSrc,
                     alt: img.alt || '画像'
@@ -1161,14 +1193,8 @@
             try {
                 document.execCommand('copy');
                 const button = event.target;
-                const originalText = button.textContent;
                 button.textContent = '✓ コピー完了！';
                 button.style.background = '#27ae60';
-                
-                setTimeout(() => {
-                    button.textContent = originalText;
-                    button.style.background = '#95a5a6';
-                }, 2000);
             } catch (err) {
                 console.error('コピー失敗:', err);
                 alert('コピーに失敗しました');
@@ -1194,14 +1220,8 @@
             try {
                 document.execCommand('copy');
                 const button = event.target;
-                const originalText = button.textContent;
                 button.textContent = '✓ コピー完了！';
                 button.style.background = '#27ae60';
-                
-                setTimeout(() => {
-                    button.textContent = originalText;
-                    button.style.background = '#3498db';
-                }, 2000);
             } catch (err) {
                 console.error('コピー失敗:', err);
                 alert('コピーに失敗しました');
@@ -1227,14 +1247,35 @@
             try {
                 document.execCommand('copy');
                 const button = event.target;
-                const originalText = button.textContent;
                 button.textContent = '✓ コピー完了！';
                 button.style.background = '#27ae60';
-                
-                setTimeout(() => {
-                    button.textContent = originalText;
-                    button.style.background = '#3498db';
-                }, 2000);
+            } catch (err) {
+                console.error('コピー失敗:', err);
+                alert('コピーに失敗しました');
+            } finally {
+                document.body.removeChild(textarea);
+            }
+        }
+
+        function copySlug() {
+            const slug = slugDisplay.value;
+            if (!slug.trim()) {
+                alert('ディレクトリ名がありません');
+                return;
+            }
+            
+            const textarea = document.createElement('textarea');
+            textarea.value = slug;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            
+            try {
+                document.execCommand('copy');
+                const button = event.target;
+                button.textContent = '✓ コピー完了！';
+                button.style.background = '#27ae60';
             } catch (err) {
                 console.error('コピー失敗:', err);
                 alert('コピーに失敗しました');
@@ -1485,24 +1526,47 @@
             urlInput.value = '';
             titleDisplay.value = '';
             clientDisplay.value = '';
+            slugDisplay.value = '';
             htmlOutput.innerHTML = '<div class="empty-state">URLを入力して「記事を読み込む」をクリックしてください</div>';
             imagesGrid.innerHTML = '<div class="empty-state">画像はまだありません</div>';
             articleImages = [];
+            
+            // すべてのコピーボタンを初期状態に戻す
+            const allButtons = document.querySelectorAll('button');
+            allButtons.forEach(button => {
+                if (button.textContent.includes('✓ コピー完了')) {
+                    // コピーボタンの種類に応じて元のテキストに戻す
+                    if (button.onclick && button.onclick.toString().includes('copyTitle')) {
+                        button.textContent = 'コピー';
+                    } else if (button.onclick && button.onclick.toString().includes('copyClient')) {
+                        button.textContent = 'コピー';
+                    } else if (button.onclick && button.onclick.toString().includes('copySlug')) {
+                        button.textContent = 'コピー';
+                    } else if (button.id === 'copyHTMLBtn') {
+                        button.textContent = 'HTMLをコピー';
+                    }
+                    button.style.background = button.id === 'copyHTMLBtn' ? '#27ae60' : '#3498db';
+                }
+            });
+            
             markdownEditor.focus();
         }
 
         // すべての画像を新しいタブで開く（順次実行）
         function openAllImages() {
+            console.log('openAllImages called, articleImages.length:', articleImages.length);
+            
             if (articleImages.length === 0) {
                 alert('画像がありません');
                 return;
             }
             
-            // 一気に開くとブロックされるので、少し間隔をあけて開く
+            // 200ms間隔で順次開く（ブロック回避）
             articleImages.forEach((img, index) => {
                 setTimeout(() => {
+                    console.log(`Opening image ${index + 1}:`, img.src);
                     window.open(img.src, '_blank');
-                }, index * 200); // 200msずつ遅延
+                }, index * 200);
             });
         }
     </script>
