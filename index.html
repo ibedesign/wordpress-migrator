@@ -679,6 +679,12 @@
                             }
                         }
                         
+                        // p要素内のiframe（YouTube）をチェック
+                        const iframe = el.querySelector('iframe[src*="youtube.com"], iframe[src*="youtu.be"]');
+                        if (iframe) {
+                            markdown += iframe.outerHTML + '\n';
+                        }
+                        
                         // p要素内の画像も処理
                         const imgs = el.querySelectorAll('img');
                         imgs.forEach(img => {
