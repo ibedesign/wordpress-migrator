@@ -419,11 +419,11 @@
                 <button onclick="copyClient()" style="padding: 6px 12px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; white-space: nowrap; font-size: 12px;">コピー</button>
             </div>
         </div>
+        <div style="padding: 8px 16px; display: flex; justify-content: flex-end;">
+            <button onclick="copyHTML()" id="copyHTMLBtn" style="padding: 6px 12px; background: #27ae60; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; white-space: nowrap; font-size: 12px;">HTMLをコピー</button>
+        </div>
         <div class="html-output" id="htmlOutput" style="flex: 1;">
             <div class="empty-state">URLを入力して「記事を読み込む」をクリックしてください</div>
-        </div>
-        <div style="padding: 12px 16px; border-top: 1px solid #e0e0e0; background: #f9f9f9;">
-            <button onclick="copyHTML()" id="copyHTMLBtn" style="width: 100%; padding: 10px; background: #95a5a6; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">HTMLをコピー</button>
         </div>
     </div>
 
@@ -541,15 +541,25 @@
             // H1タイトルを抽出
             const h1 = doc.querySelector('h1') || articleContent.querySelector('h1');
             if (h1) {
-                title = h1.textContent.trim();
-                titleDisplay.value = title;
-                
-                // クライアント名を抽出（font size='2' or size="2"）
+                // クライアント名を先に抽出（font size='2' or size="2"）
                 const fontTag = h1.querySelector('font[size="2"], font[size=\'2\']');
+                let clientName = '';
                 if (fontTag) {
-                    const clientName = fontTag.textContent.trim();
+                    clientName = fontTag.textContent.trim();
                     clientDisplay.value = clientName;
                 }
+                
+                // タイトルからクライアント名を除外
+                let fullText = h1.textContent.trim();
+                if (clientName) {
+                    // クライアント名をタイトルから削除
+                    title = fullText.replace(clientName, '').trim();
+                    // 余分な改行や空白を削除
+                    title = title.replace(/\s+/g, ' ').trim();
+                } else {
+                    title = fullText;
+                }
+                titleDisplay.value = title;
             }
 
             // メイン画像（アイキャッチ）を抽出 - doc全体から探す
