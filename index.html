@@ -452,6 +452,9 @@
             <button onclick="applyFormat('alt')" title="ALT">（ALT</button>
             <button onclick="applyFormat('image')" title="画像">画像</button>
             <button onclick="applyFormat('paragraph')" title="段落">P</button>
+            <button onclick="applyAlign('center')" title="中央揃え">中央</button>
+            <button onclick="applyAlign('right')" title="右揃え">右</button>
+            <button onclick="applyAlign('left')" title="左揃え">左</button>
             <button onclick="insertHR()" title="水平線">---</button>
             <button onclick="deleteLine()" title="削除" style="color: #d32f2f;">削除</button>
             <button onclick="insertLineBreak()" title="改行">改行</button>
@@ -1099,7 +1102,7 @@
                             html += listType === 'ul' ? '</ul>\n' : '</ol>\n';
                             inList = false;
                         }
-                        html += '<p><a href="' + url + '" target="_blank">' + url + '</a></p>\n';
+                        html += '<a href="' + url + '" target="_blank">' + url + '</a>\n';
                         continue;
                     }
                     
@@ -1111,7 +1114,7 @@
                             html += listType === 'ul' ? '</ul>\n' : '</ol>\n';
                             inList = false;
                         }
-                        html += '<p><a href="' + url + '" target="_blank">' + processInlineFormatting(linkText) + '</a></p>\n';
+                        html += '<a href="' + url + '" target="_blank">' + processInlineFormatting(linkText) + '</a>\n';
                         continue;
                     }
                     
@@ -1121,7 +1124,7 @@
                         html += listType === 'ul' ? '</ul>\n' : '</ol>\n';
                         inList = false;
                     }
-                    html += '<p><a href="' + url + '" target="_blank">' + url + '</a></p>\n';
+                    html += '<a href="' + url + '" target="_blank">' + url + '</a>\n';
                     continue;
                 }
 
@@ -1150,7 +1153,7 @@
                     if (content.trim() === '') {
                         content = '★';
                     }
-                    html += '<p>' + processInlineFormatting(content) + '</p>\n';
+                    html += '<p style="margin-top: 15px;">' + processInlineFormatting(content) + '</p>\n';
                     continue;
                 }
 
@@ -1517,6 +1520,49 @@
             markdownEditor.setSelectionRange(newPosition, newPosition);
             markdownEditor.focus();
             updateHTML(); // 手動更新
+        }
+
+        function applyAlign(align) {
+            const start = markdownEditor.selectionStart;
+            const end = markdownEditor.selectionEnd;
+            const text = markdownEditor.value;
+            
+            // 選択範囲がない場合は現在の行を対象にする
+            let lineStart = start;
+            let lineEnd = end;
+            
+            if (start === end) {
+                // カーソル位置の行全体を取得
+                while (lineStart > 0 && text[lineStart - 1] !== '\n') {
+                    lineStart--;
+                }
+                while (lineEnd < text.length && text[lineEnd] !== '\n') {
+                    lineEnd++;
+                }
+            }
+            
+            const beforeText = text.substring(0, lineStart);
+            const selectedText = text.substring(lineStart, lineEnd);
+            const afterText = text.substring(lineEnd);
+            
+            // 既存の <p style="text-align: ..."> を削除
+            let cleanedText = selectedText
+                .replace(/<p style="text-align:\s*(center|right|left);">/gi, '<p>')
+                .replace(/<p>/gi, '')
+                .replace(/<\/p>/gi, '');
+            
+            // 新しい配置を適用（leftの場合は何も付けない）
+            let newText;
+            if (align === 'left') {
+                newText = '<p>' + cleanedText + '</p>';
+            } else {
+                newText = `<p style="text-align: ${align};">` + cleanedText + '</p>';
+            }
+            
+            markdownEditor.value = beforeText + newText + afterText;
+            markdownEditor.setSelectionRange(lineStart, lineStart + newText.length);
+            markdownEditor.focus();
+            updateHTML();
         }
 
         function resetAll() {
