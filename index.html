@@ -1140,20 +1140,46 @@
                     continue;
                 }
 
-                // （C または（ALT で終わる行をチェック
-                if (line.trim().endsWith('（C') || line.trim().endsWith('（ALT')) {
+                // （C、（中央、（右、（左、（ALT で終わる行をチェック
+                if (line.trim().endsWith('（C') || line.trim().endsWith('（中央') || 
+                    line.trim().endsWith('（右') || line.trim().endsWith('（左') || 
+                    line.trim().endsWith('（ALT')) {
                     flushParagraph();
                     if (inList) {
                         html += listType === 'ul' ? '</ul>\n' : '</ol>\n';
                         inList = false;
                     }
-                    // （C または（ALT を削除してPタグで囲む
-                    let content = line.trim().replace(/（C$/, '').replace(/（ALT$/, '');
+                    
+                    // マーカーを削除してPタグで囲む
+                    let content = line.trim()
+                        .replace(/（C$/, '')
+                        .replace(/（中央$/, '')
+                        .replace(/（右$/, '')
+                        .replace(/（左$/, '')
+                        .replace(/（ALT$/, '');
+                    
                     // 空白のみの場合は★を入れる
                     if (content.trim() === '') {
                         content = '★';
                     }
-                    html += '<p style="margin-top: 15px;">' + processInlineFormatting(content) + '</p>\n';
+                    
+                    // スタイルを決定
+                    let style = '';
+                    if (line.trim().endsWith('（C')) {
+                        style = 'margin-top: 15px;';
+                    } else if (line.trim().endsWith('（中央')) {
+                        style = 'text-align: center;';
+                    } else if (line.trim().endsWith('（右')) {
+                        style = 'text-align: right;';
+                    } else if (line.trim().endsWith('（左')) {
+                        style = ''; // 左揃えは通常のP
+                    }
+                    
+                    if (style) {
+                        html += '<p style="' + style + '">' + processInlineFormatting(content) + '</p>\n';
+                    } else {
+                        html += '<p>' + processInlineFormatting(content) + '</p>\n';
+                    }
                     continue;
                 }
 
@@ -1447,7 +1473,13 @@
                 .replace(/^\s*[-*]\s+/gm, '')          // 箇条書き (-, *)
                 .replace(/^\s*\d+\.\s+/gm, '')         // 番号付きリスト (1., 2., ...)
                 .replace(/\*\*(.+?)\*\*/g, '$1')       // 太字 (**text**)
+                .replace(/<p style="[^"]*">/gi, '')    // Pタグ（style付き）
+                .replace(/<p>/gi, '')                  // Pタグ
+                .replace(/<\/p>/gi, '')                // Pタグ閉じ
                 .replace(/（C$/gm, '')                 // キャプション
+                .replace(/（中央$/gm, '')              // 中央揃え
+                .replace(/（右$/gm, '')                // 右揃え
+                .replace(/（左$/gm, '')                // 左揃え
                 .replace(/（ALT$/gm, '');              // ALT
             
             markdownEditor.value = beforeText + cleanText + afterText;
@@ -1545,19 +1577,22 @@
             const selectedText = text.substring(lineStart, lineEnd);
             const afterText = text.substring(lineEnd);
             
-            // 既存の <p style="text-align: ..."> を削除
+            // 既存の配置マーカーやPタグを削除
             let cleanedText = selectedText
-                .replace(/<p style="text-align:\s*(center|right|left);">/gi, '<p>')
+                .replace(/<p style="[^"]*">/gi, '')
                 .replace(/<p>/gi, '')
-                .replace(/<\/p>/gi, '');
+                .replace(/<\/p>/gi, '')
+                .replace(/（中央$/gi, '')
+                .replace(/（右$/gi, '')
+                .replace(/（左$/gi, '')
+                .replace(/（C$/gi, '')
+                .replace(/（ALT$/gi, '')
+                .trim();
             
-            // 新しい配置を適用（leftの場合は何も付けない）
+            // 新しい配置マーカーを追加
             let newText;
-            if (align === 'left') {
-                newText = '<p>' + cleanedText + '</p>';
-            } else {
-                newText = `<p style="text-align: ${align};">` + cleanedText + '</p>';
-            }
+            const alignMarker = align === 'center' ? '（中央' : align === 'right' ? '（右' : '（左';
+            newText = cleanedText + alignMarker;
             
             markdownEditor.value = beforeText + newText + afterText;
             markdownEditor.setSelectionRange(lineStart, lineStart + newText.length);
